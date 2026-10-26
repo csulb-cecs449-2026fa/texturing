@@ -1,6 +1,6 @@
 /**
 This application displays a textured mesh whose vertices also contain (u, v) texture coordinates.
-	See "texture_perspective.vert" for a vertex shader that transforms (x,y,z,r,g,b) vertices to clip space.
+	See "texture_perspective.vert" for a vertex shader that transforms (x,y,z,u,v) vertices to clip space.
 	See "texturing.frag" for a fragment shader that samples colors from a 2D texture.
 */
 #include <glad/glad.h>
@@ -78,7 +78,6 @@ Mesh constructMesh(const std::vector<Vertex3D>& vertices, const std::vector<uint
 
 
 
-
 	// Generate a second buffer, to store the indices of each triangle in the mesh.
 	uint32_t ebo;
 	glGenBuffers(1, &ebo);
@@ -97,20 +96,18 @@ const size_t VERTICES_PER_FACE{ 3 };
 // compatible with the rest of our application.
 void fromAssimpMesh(const aiMesh* mesh, std::vector<Vertex3D>& vertices,
 	std::vector<uint32_t>& faces) {
+	const bool hasTextureCoordinates{ mesh->HasTextureCoords(0) };
+
 	for (size_t i{ 0 }; i < mesh->mNumVertices; ++i) {
 		// Each "vertex" from Assimp has to be transformed into a Vertex3D in our application.
+		const auto& position{ mesh->mVertices[i] };
+		const aiVector3D textureCoordinate{
+			hasTextureCoordinates ? mesh->mTextureCoords[0][i] : aiVector3D{ 0, 0, 0 }
+		};
+
 		vertices.push_back(
-			Vertex3D{ mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z }
+			{ position.x, position.y, position.z, textureCoordinate.x, textureCoordinate.y }
 		);
-		// TODO: construct the vertex above with texture coordinates (u, v) in addition to (x, y, z).
-		// To get (u, v) for the current Assimp vertex, access the mTextureCoords field of the
-		// "mesh" local variable. mTextureCoords[0] is the first texture of the mesh (in the future,
-		// meshes will have more than 1 texture). mTextureCoords[0][i] is the (u, v) coordinate
-		// for the index-i vertex in the first texture. The .x and .y fields of this coordinate
-		// are the u and v coordinates for the vertex, to be used when constructing our Vertex3D object.
-
-
-
 	}
 
 	faces.reserve(mesh->mNumFaces * VERTICES_PER_FACE);
@@ -181,17 +178,19 @@ uint32_t generateTexture(const StbImage& texture) {
 	return textureId;
 }
 
-// A scene of a textured triangle.
-Mesh triangle() {
-	std::vector<Vertex3D> triangleVertices{
+// A scene of a textured square.
+Mesh square() {
+	std::vector<Vertex3D> squareVertices{
 		{ -0.5, -0.5, 0, 0, 1 },
 		{ -0.5, 0.5, 0,  0, 0 },
-		{  0.5, 0.5, 0,  1, 0 }
+		{  0.5, 0.5, 0,  1, 0 },
+		{  0.5, -0.5, 0, 1, 1 }
 	};
-	std::vector<uint32_t> triangleFaces{
-		2, 1, 0
+	std::vector<uint32_t> squareFaces{
+		2, 1, 0,
+		3, 2, 0
 	};
-	Mesh m{ constructMesh(triangleVertices, triangleFaces) };
+	Mesh m{ constructMesh(squareVertices, squareFaces) };
 
 	StbImage wall{};
 	wall.loadFromFile("models/wall.jpg");
@@ -208,18 +207,6 @@ Mesh bunny() {
 	obj.texture = generateTexture(texture);
 	return obj;
 }
-
-
-// TODO: write your own dragon() function, that constructs a Mesh reprenting the Stanford Dragon.
-// Following the example of bunny(), use assimp to load "scene.gltf" from the "models/dragon" folder.
-// The texture for the dragon is "DefaultMaterial_baseColor.jpeg" from the "models/dragon/textures" folder.
-// Then add the dragon to your scene alongside the bunny. The dragon is SIGNIFICANTLY larger in local space;
-// you will need to scale it down to approximately 1% its original size, and then adjust from there.
-/*
-Mesh dragon() {
-	...
-}
-*/
 
 glm::mat4 buildModelMatrix(const glm::vec3& position, const glm::vec3& orientation, const glm::vec3& scale) {
 	auto m{ glm::translate(glm::mat4{ 1 }, position) };
@@ -269,6 +256,7 @@ int main() {
 		while (const std::optional event{ window.pollEvent() }) {
 			if (event->is<sf::Event::Closed>()) {
 				window.close();
+				running = false;
 			}
 		}
 		auto now{ c.getElapsedTime() };
@@ -299,6 +287,7 @@ int main() {
 
 		// Draw!
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		program.setUniform("baseTexture", 0);
 		drawMesh(bunnyObj.mesh);
 		window.display();
 	}

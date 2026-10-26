@@ -14,7 +14,7 @@ void StbImage::loadFromFile(const std::string& filepath) {
         throw std::runtime_error("Could not load file " + filepath);
     }
 
-    m_data = std::unique_ptr<unsigned char[]>(data);
+    m_data.reset(data);
 }
 
 int StbImage::getWidth() const { return m_width; }

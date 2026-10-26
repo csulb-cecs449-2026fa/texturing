@@ -6,8 +6,14 @@
 #include <string>
 class StbImage
 {
+    struct StbImageDeleter {
+        void operator()(unsigned char* data) const noexcept {
+            stbi_image_free(data);
+        }
+    };
+
     int m_width, m_height, m_bpp;
-    std::unique_ptr<unsigned char[]> m_data = nullptr;
+    std::unique_ptr<unsigned char, StbImageDeleter> m_data = nullptr;
 
 public:
     StbImage();
