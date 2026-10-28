@@ -1,3 +1,8 @@
+
+# Don't ignore model files.
+!models/*
+
+
 ## Ignore Visual Studio and CLion build files.
 
 
@@ -437,6 +442,3 @@ out/
 # Editor-based Rest Client
 .idea/httpRequests
 
-
-# Don't ignore model files.
-!models/*
